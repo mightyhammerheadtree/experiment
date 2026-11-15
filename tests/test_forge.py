@@ -62,6 +62,10 @@ class CoreTests(unittest.TestCase):
     def test_discovery_budget(self):
         r = discover(fixture(self.root/'game.exe'),1)
         self.assertEqual(r['instructions'],1); self.assertTrue(r['budget_exhausted'])
+    def test_discovery_budget_mid_block(self):
+        p = fixture(self.root/'game.exe'); data = bytearray(p.read_bytes())
+        data[0x200:0x204] = b'\x90\x90\x90\xc3'; p.write_bytes(data)
+        self.assertTrue(discover(p,1)['budget_exhausted'])
     def test_invalid_budget(self):
         with self.assertRaises(ValueError): discover(self.root/'anything',0)
     def test_handoff_honesty(self):
@@ -102,7 +106,7 @@ class CoreTests(unittest.TestCase):
                 site=out/'site'; site.mkdir(); (site/'index.html').write_text('<html></html>')
                 (site/'module.wasm').write_bytes(b'\0asm\x01\0\0\0')
                 (site/'site.json').write_text('{"kind":"wine64","features_off":["translation"]}')
-        with patch('forge.core.subprocess.check_output',return_value=GEX_REV+'\n'),patch('forge.core.subprocess.run',side_effect=fake_run):
+        with patch('forge.core.subprocess.check_output',return_value=GEX_REV+'\n'),patch('forge.core.subprocess.run',side_effect=fake_run),patch('forge.preflight.preflight',return_value={'failures':0,'checks':[]}):
             archive = build(gex,rec,out)
         with zipfile.ZipFile(archive) as z:
             manifest=json.loads(z.read('glassforge-build.json'))

@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "gex": {
+    "repository": "https://github.com/HeyPuter/gex",
+    "revision": "9004980758dbba3f16fa40db7dbc69cc4a9a2eb9",
+    "license": "AGPL-3.0-only",
+    "role": "Primary x64/x86 runtime translation, Linux ABI and browser devices"
+  },
+  "wine": {
+    "repository": "https://github.com/MercuryWorkshop/wine-wasm",
+    "revision": "1395ef351a40df15260b7969ef6c3e88e0665e91",
+    "license": "Review Wine and bundled component notices",
+    "role": "GEX-pinned Wasm Wine64/WoW64 compatibility layer; not stock Wine"
+  },
+  "linuxontab": {
+    "repository": "https://github.com/kilian-ai/linuxontab",
+    "revision": "08eb427e5b926463e2fd8f24bba06287c06fe4ba",
+    "license": "No top-level license found; component licenses and modifications require review",
+    "role": "Reference integration and local source of v86/BIOS/Linux console assets"
+  },
+  "v86": {
+    "repository": "https://github.com/copy/v86",
+    "license": "BSD-2-Clause; BIOS and Linux images have separate terms",
+    "role": "32-bit full-system Linux backend, supplied through pinned linuxontab assets; not an x64 backend"
+  },
+  "linux-wasm": {
+    "repository": "https://github.com/joelseverin/linux-wasm",
+    "revision": "3103d5c877a8f6251b4b451c866a46941fd1fab3",
+    "license": "GPL-2.0-only for repository code; patches follow target project licenses",
+    "role": "Research only: real Linux compiled to native Wasm, not x86 emulation or an integrated backend"
+  }
+}

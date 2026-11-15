@@ -23,13 +23,19 @@ Source reviewed at GEX `9004980758dbba3f16fa40db7dbc69cc4a9a2eb9`.
 1. x64 default build target, x86 second; pefile metadata parsing.
 2. iced-x86 bounded recursive code discovery from entry/export/unwind seeds.
 3. Compatibility checkpoints for imported graphics, audio, network and .NET APIs.
-4. Correct eject invocation with web source and optional unit-cache path.
+4. Correct eject invocation with web source and explicitly checked unit-cache path.
 5. Ejected model architecture gate before building.
 6. Explicit `features.translation=false`, `cold=none` (the generic
    `jit_fallback` setting alone is not the Wine-page AOT switch).
 7. Built launch and packaged site kind/translation checks; nonempty units.
 8. Static ZIP with source revision, SHA-256 file inventory and the honest status
    `built-not-gameplay-validated`.
+9. Non-executing recording preflight: source revision/cleanliness, runtime
+   modules, session format/loader architecture, bundle and recorded unit pairs.
+10. Streamed ZIP integrity verification before returning a browser build.
+11. Opt-in pinned upstream setup plans with logs and a provisioned-runner workflow.
+12. Opt-in upstream Wine page probing through a local BENCH_SH adapter; no custom
+    bundler or instruction semantics implementation. Probe != AOT export.
 
 ## Ichorous sample
 

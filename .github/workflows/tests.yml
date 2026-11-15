@@ -1,4 +1,4 @@
-name: Glassforge tests
+name: Windex and developer-tool tests
 on: [push, pull_request]
 jobs:
   unit:
@@ -13,3 +13,12 @@ jobs:
           python-version: ${{ matrix.python }}
       - run: pip install -r requirements.txt
       - run: python -m unittest discover -s tests -v
+
+  browser-adapters:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/js/*.test.mjs
