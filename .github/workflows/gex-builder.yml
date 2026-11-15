@@ -1,0 +1,42 @@
+name: GEX toolchain (provisioned runner)
+on:
+  workflow_dispatch:
+    inputs:
+      phase:
+        description: Upstream build phase (not a game conversion)
+        type: choice
+        options: [fetch, driver, wine, runtime, all]
+        default: driver
+permissions:
+  contents: read
+concurrency:
+  group: gex-provisioned-builder
+  cancel-in-progress: false
+jobs:
+  build:
+    # Opt-in: no costly hosted job and no attempt to install unknown toolchains.
+    # Use a dedicated disposable runner, not a workstation containing secrets.
+    runs-on: [self-hosted, linux, x64, gex-builder]
+    timeout-minutes: 360
+    env:
+      PHASE: ${{ inputs.phase }}
+      GEX_ROOT: ${{ runner.temp }}/glassforge-gex
+      LOG_ROOT: ${{ runner.temp }}/glassforge-logs-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create Python environment
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install -r requirements.txt
+      - name: Report available tools
+        run: .venv/bin/python -m forge doctor --gex "$GEX_ROOT"
+      - name: Build pinned upstream phase
+        run: .venv/bin/python -m forge setup --gex "$GEX_ROOT" --phase "$PHASE" --jobs 4 --execute --logs "$LOG_ROOT"
+      - name: Upload build logs (not game assets or runtime binaries)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gex-build-logs
+          path: ${{ env.LOG_ROOT }}
+          if-no-files-found: warn
+          retention-days: 7

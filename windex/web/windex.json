@@ -1,0 +1,1 @@
+{"schema":1,"product":"Windex","mode":"runtime-translation","gex":{"enabled":false,"package":"/assets/gex/","trees":[],"loader":"/wine/lib/wine/x86_64-unix/wine","prefix":"/pfx","env":{},"store":"windex-v1","d3d":true},"linux":{"enabled":false,"assets":"/assets/linux/","iso":"linux4.iso","memoryMiB":128}}

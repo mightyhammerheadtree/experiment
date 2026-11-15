@@ -10,6 +10,14 @@ GEX_REV = '9004980758dbba3f16fa40db7dbc69cc4a9a2eb9'
 MAX_EXE = 64 * 1024 * 1024
 
 
+def hash_file(path):
+    digest = hashlib.sha256()
+    with Path(path).open('rb') as stream:
+        for block in iter(lambda: stream.read(1024*1024), b''):
+            digest.update(block)
+    return digest.hexdigest()
+
+
 def inspect(path):
     path = Path(path)
     if path.stat().st_size > MAX_EXE:
@@ -70,12 +78,15 @@ def strict_settings(config):
 
 
 def validate_launch(launch, expected_arch):
+    if expected_arch not in ('x64', 'x86') or not isinstance(launch, dict):
+        raise ValueError('Invalid target architecture or launch manifest')
     expected = 'wine64' if expected_arch == 'x64' else 'wine32'
     if launch.get('kind') != expected:
         raise ValueError(f'Expected {expected} launch, got {launch.get("kind")}')
-    if 'translation' not in launch.get('features_off', []):
+    disabled = launch.get('features_off')
+    if not isinstance(disabled, list) or 'translation' not in disabled:
         raise ValueError('Refusing export: runtime translation is not disabled')
-    if not launch.get('units'):
+    if not isinstance(launch.get('units'), list) or not launch['units']:
         raise ValueError('Refusing export with no compiled units')
     return True
 
@@ -99,7 +110,13 @@ def build(gex, recording, output, arch='x64', unit_cache=None):
     revision = subprocess.check_output(['git', '-C', str(gex), 'rev-parse', 'HEAD'], text=True).strip()
     if revision != GEX_REV:
         raise ValueError('GEX checkout does not match the audited pinned revision')
+    from .preflight import preflight
+    readiness = preflight(gex, recording, arch, unit_cache)
+    if readiness['failures']:
+        details = '; '.join(c['id']+': '+c['detail'] for c in readiness['checks'] if c['status'] == 'fail')
+        raise ValueError('Build preflight blocked: '+details)
     output.mkdir(parents=True)
+    (output/'preflight.json').write_text(json.dumps(readiness, indent=2))
     project, site = output/'project', output/'site'
     commands = []
     def run(cmd):
@@ -129,10 +146,16 @@ def build(gex, recording, output, arch='x64', unit_cache=None):
         if p.is_symlink():
             raise ValueError('Refusing symlink in site output')
         if p.is_file():
-            manifest['files'][p.relative_to(site).as_posix()] = hashlib.sha256(p.read_bytes()).hexdigest()
+            manifest['files'][p.relative_to(site).as_posix()] = hash_file(p)
     (site/'glassforge-build.json').write_text(json.dumps(manifest, indent=2))
     archive = output/'browser-build.zip'
     with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as z:
         for p in sorted(site.rglob('*')):
             if p.is_file(): z.write(p, p.relative_to(site))
+    from .verify import verify
+    verification = verify(archive)
+    (output/'verification.json').write_text(json.dumps(verification, indent=2))
+    if verification['status'] == 'invalid':
+        archive.unlink()
+        raise ValueError('Export integrity verification failed: '+ '; '.join(verification['errors']))
     return archive

@@ -71,8 +71,10 @@ See docs/x64-integration.md for precise source locations and remaining work.
 ## 3. Prepare a game page and record real gameplay
 
 Prepare a GEX Wine page/bundle whose launch uses the correct Wine loader and
-includes the EXE **and all assets**. This step is manual today. Merely making a
-tar of the EXE is insufficient. Build the necessary unit cache using upstream
+includes the EXE **and all assets**. Use the optional `forge probe` wrapper described in
+[builder.md](builder.md) to invoke upstream bundle/probe preparation. A
+recording-ready site still requires integration; merely making a tar of the EXE
+is insufficient. Build the necessary unit cache using upstream
 GEX cgen/units tooling; see wine32.rs's diagnostics for trampoline requirements.
 
 From the GEX checkout, for an already prepared site and bundle:
@@ -102,7 +104,8 @@ python -m forge build --arch x64 --gex /path/to/gex \
 
 For a recorded x86 project, use `--arch x86`.
 
-The adapter verifies the pinned checkout, passes `--web-src` and optional unit
+The adapter preflights the recording, runtime and explicitly supplied unit
+cache, verifies a clean pinned checkout, passes `--web-src` and the unit
 cache to GEX eject, checks the ejected project's architecture, and sets:
 
 ```json
@@ -130,6 +133,11 @@ mocked upstream processes, not a successful real toolchain build in this sandbox
 This environment has no Rust/clang and cannot fetch every required build host.
 
 ## 5. Validate before publishing
+
+First run `python -m forge verify /path/to/browser-build.zip`. The verifier
+checks hashes, declared AOT settings and ZIP paths without extracting anything.
+It is not a signature or a gameplay check. The build runs the same verification
+automatically before reporting success.
 
 Extract browser-build.zip and use its upstream `node serve.mjs`. Opening
 index.html with file:// is not sufficient. Production hosting must send COOP
