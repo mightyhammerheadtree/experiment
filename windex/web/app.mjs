@@ -6,7 +6,7 @@ let entries = [], runtime, linux, noticeTimer, z = 1;
 function notify(message) { $('message').textContent = message; $('message').style.display = 'block'; clearTimeout(noticeTimer); noticeTimer = setTimeout(() => $('message').style.display = 'none', 10000); }
 function append(id, text, max = 64000) { const node = $(id); node.textContent = (node.textContent + text).slice(-max); node.scrollTop = node.scrollHeight; }
 function busyFiles() { return runtime && !['idle','ready'].includes(runtime.state); }
-function refresh() { const ready = runtime?.state === 'ready'; $('run').disabled = !ready || !$('exe').value; $('stop').disabled = runtime?.state !== 'running'; $('boot').disabled = !runtime?.config.enabled || runtime.state !== 'idle'; $('persist').disabled = runtime?.state !== 'idle'; $('filesButton').disabled = busyFiles(); $('folderButton').disabled = busyFiles(); }
+function refresh() { const ready = runtime?.state === 'ready'; $('run').disabled = !ready || !$('exe').value; $('stop').disabled = runtime?.state !== 'running'; $('boot').disabled = !runtime?.config.enabled || runtime.state !== 'idle'; $('persist').disabled = runtime?.state !== 'idle'; $('installWine').disabled = !['needs-wine','ready'].includes(runtime?.state); $('testWine').disabled = !ready; $('filesButton').disabled = busyFiles(); $('folderButton').disabled = busyFiles(); }
 function choose(files, folder = false) {
   if (busyFiles()) return notify('Wait for the running program to end before changing game files');
   try { entries = collectFiles(files, {folder}); $('exe').replaceChildren(); const exes = entries.filter(e => /\.exe$/i.test(e.path)); for (const entry of exes) { const option = document.createElement('option'); option.value = entry.path; option.textContent = entry.path; $('exe').append(option); } $('exe').disabled = !exes.length; $('fileStatus').textContent = `${entries.length} files · ${(entries.reduce((n,e)=>n+e.file.size,0)/1048576).toFixed(1)} MiB · ${exes.length} executables. Local browser selection only.`; refresh(); }
@@ -37,9 +37,12 @@ function showWindow(w) {
   w.addEventListener('resized', resize); resize();
   w.addEventListener('request', e => { if (['maximize','fullscreen'].includes(e.kind)) w.setStates({maximized: true}, $('desktop').clientWidth, 720); if (['unmaximize','unfullscreen'].includes(e.kind)) w.setStates({maximized: false, fullscreen: false}); });
 }
-$('boot').onclick = async () => { try { await runtime.boot({persistent: $('persist').checked}); append('runtimeLog', 'Runtime ready. Select files and run an EXE.\n'); } catch (e) { notify(e.message); append('runtimeLog', e.message+'\n'); } refresh(); };
+$('boot').onclick = async () => { try { await runtime.boot({persistent: $('persist').checked}); append('runtimeLog', runtime.state === 'ready' ? 'Wine files ready. Test Wine, then select a game.\n' : 'GEX environment started. Install a compatible Wine runtime bundle to enable Windows games.\n'); } catch (e) { notify(e.message); append('runtimeLog', e.message+'\n'); } refresh(); };
 $('run').onclick = async () => { try { await runtime.launch(entries, $('exe').value); } catch (e) { notify(e.message); append('runtimeLog', e.message+'\n'); } refresh(); };
 $('stop').onclick = () => runtime.stop();
+$('installWine').onclick = () => $('wineLayers').click();
+$('wineLayers').onchange = async e => { try { await runtime.installWine(e.target.files); notify('Wine files installed. Use Test Wine to verify execution.'); } catch (error) { notify(error.message); } finally { e.target.value = ''; refresh(); } };
+$('testWine').onclick = async () => { try { await runtime.testWine(); notify('Wine execution test passed. Game compatibility still varies.'); } catch (e) { notify(e.message); } refresh(); };
 $('linuxBoot').onclick = async () => { try { await linux.boot($('vga')); } catch (e) { notify(e.message); } };
 $('linuxStop').onclick = () => linux.stop().catch(e => notify(e.message));
 $('terminalForm').onsubmit = e => { e.preventDefault(); try { linux.send($('terminalInput').value + '\n'); $('terminalInput').value = ''; } catch (e) { notify(e.message); } };
@@ -49,9 +52,11 @@ try {
   const response = await fetch('./windex.json'); if (!response.ok) throw Error('Missing Windex configuration. Stage a site first.'); const config = await response.json();
   runtime = new WindowsRuntime(config.gex, {onWindow: showWindow}); linux = new LinuxConsole(config.linux);
   runtime.addEventListener('state', e => { $('runtimeState').textContent = e.detail.toUpperCase(); refresh(); });
+  runtime.addEventListener('diagnostic', () => { $('diagnostics').replaceChildren(); for (const row of runtime.diagnostics) { const item = document.createElement('li'); item.className = row.status; item.textContent = `${row.status.toUpperCase()} · ${row.detail}`; $('diagnostics').append(item); } });
+  runtime.addEventListener('progress', e => { const p = e.detail; $('importProgress').textContent = `${p.stage}: ${p.imported}/${p.total} · ${p.file}`; });
   runtime.addEventListener('log', e => append('runtimeLog', e.detail)); runtime.addEventListener('exit', e => append('runtimeLog', '\nProgram exited: '+JSON.stringify(e.detail)+'\n'));
   linux.addEventListener('output', e => append('serial', e.detail, 200000)); linux.addEventListener('state', e => { $('linuxState').textContent = e.detail.toUpperCase(); $('linuxBoot').disabled = e.detail !== 'idle'; $('linuxStop').disabled = e.detail !== 'running'; });
-  $('gexAvailability').textContent = config.gex.enabled ? 'Runtime assets configured. Actual game compatibility is unverified.' : 'Not staged: build GEX runtime + Wine trees on a capable machine. Linux console can run independently.';
+  $('gexAvailability').textContent = config.gex.enabled ? 'GEX environment configured. Boot it to check Wine availability.' : 'This deployment has not supplied its GEX runtime. No game is simulated.';
   $('linuxAvailability').textContent = config.linux.enabled ? 'Local v86/BIOS/ISO assets staged. Network relay is disabled.' : 'Not staged: use --linuxontab with the Windex stage command.';
   $('linuxBoot').disabled = !config.linux.enabled;
   $('capabilities').textContent = JSON.stringify({secureContext: isSecureContext, crossOriginIsolated, WebGPU: !!navigator.gpu, OPFS: !!navigator.storage?.getDirectory, gexAssetsConfigured: config.gex.enabled, linuxAssetsConfigured: config.linux.enabled}, null, 2);

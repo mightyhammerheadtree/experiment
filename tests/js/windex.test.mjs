@@ -21,15 +21,23 @@ test('PE metadata identifies x64 and x86 in browser', async () => { assert.equal
 test('bad PE or unsupported CPU rejected', async () => { await assert.rejects(peArchitecture(new File(['bad'],'a.exe'))); await assert.rejects(peArchitecture(exe('arm.exe',43620))); });
 test('remote runtime modules rejected', () => assert.throws(() => localURL('https://elsewhere.invalid/a','https://windex.invalid/'), /same-origin/));
 
-function runtimeFixture() {
+function runtimeFixture({wine = true, wow64 = true} = {}) {
   const calls = [], logs = []; let finish;
   class System extends EventTarget {
     constructor(options) { super(); calls.push(['system',options]); }
     async boot() { calls.push(['boot']); }
+    async sync() { calls.push(['sync']); }
     spawn(argv, opts) { calls.push(['spawn',argv,opts]); return {started: Promise.resolve(12), exited: new Promise(r => finish = r), stdout: new ReadableStream({start(c) { c.enqueue(new TextEncoder().encode('program output')); c.close(); }}), stderr: new ReadableStream({start(c) { c.close(); }}), kill(signal) { calls.push(['kill',signal]); finish({code:143}); }}; }
     async shutdown() { calls.push(['shutdown']); }
   }
-  class FS { constructor() {} addTar(url) { calls.push(['tar',url]); } async mkdir(path) { calls.push(['mkdir',path]); } async writeFile(path,data) { calls.push(['file',path,data.length]); } }
+  class FS { constructor() {}
+    async stat(path) {
+      if (!wine || (!wow64 && path.includes('/i386-windows/'))) throw Error('ENOENT');
+      return {type: path.endsWith('/c:') ? 'directory' : 'file'};
+    }
+    async readFile(path, options) { return options?.encoding ? 'WINE REGISTRY Version 2\n#arch=win64\n' : new Uint8Array([0,97,115,109,1,0,0,0]); }
+    async readlink() { return '/'; }
+    addTar(url) { calls.push(['tar',url]); } async mkdir(path) { calls.push(['mkdir',path]); } async writeFile(path,data) { calls.push(['file',path,data.length]); } }
   class HostWindows extends EventTarget { constructor() { super(); this.env = {WAYLAND_DISPLAY: 'wayland-0'}; } }
   class Audio { constructor() { this.ready = Promise.resolve(); calls.push(['audio']); } }
   const modules = {'index':{System},'fs':{MemoryFilesystem:FS,OPFSFilesystem:FS},'windows-host':{HostWindows},'gl':{MesaGl:class {}},'audio':{WebAudio:Audio},'input':{Gamepads:class {},PointerLock:class {}}};
@@ -63,3 +71,35 @@ test('unsupported persistence rejected explicitly', async () => { const {runtime
 test('invalid selected EXE resets state without spawning', async () => { const {runtime,calls} = runtimeFixture(); await runtime.boot(); await assert.rejects(runtime.launch(collectFiles([new File(['bad'],'a.exe')]),'a.exe')); assert.equal(runtime.state,'ready'); assert.equal(calls.filter(c=>c[0]==='spawn').length,0); });
 test('concurrent EXE launches rejected', async () => { const {runtime} = runtimeFixture(); await runtime.boot(); const entries=collectFiles([exe()]); await runtime.launch(entries,'game.exe'); await assert.rejects(runtime.launch(entries,'game.exe'),/one foreground/); });
 test('Linux VM is independently gated when not staged', async () => { const linux=new LinuxConsole({enabled:false}); await assert.rejects(linux.boot(null),/Stage linuxontab/); assert.equal(linux.emulator,null); });
+
+test('base Linux without Wine boots but cannot launch an EXE', async () => {
+  const {runtime,calls} = runtimeFixture({wine:false}); await runtime.boot();
+  assert.equal(runtime.state,'needs-wine');
+  await assert.rejects(runtime.launch(collectFiles([exe()]),'game.exe'),/Boot Windows/);
+  assert.equal(calls.filter(c=>c[0]==='spawn').length,0);
+});
+test('Wine installation rejects non-archive layers', async () => {
+  const {runtime} = runtimeFixture({wine:false}); await runtime.boot();
+  await assert.rejects(runtime.installWine([new File(['x'],'wine.exe')]),/runtime layers/);
+  assert.equal(runtime.state,'needs-wine');
+});
+test('Wine execution test waits for actual process exit', async () => {
+  const {runtime,calls,finish} = runtimeFixture(); await runtime.boot();
+  const result = runtime.testWine(); assert.equal(runtime.state,'testing-wine');
+  assert.deepEqual(calls.find(c=>c[0]==='spawn')[1].slice(1),['cmd.exe','/c','ver']);
+  finish({code:0}); assert.equal((await result).status,'passed'); assert.equal(runtime.state,'ready');
+});
+test('Wine execution failure does not report success', async () => {
+  const {runtime,finish} = runtimeFixture(); await runtime.boot();
+  const result = runtime.testWine(); finish({code:1});
+  await assert.rejects(result,/exit code 1/); assert.equal(runtime.wineTest.status,'failed');
+});
+test('Wine execution timeout requires session reload', async () => {
+  const {runtime} = runtimeFixture(); await runtime.boot();
+  await assert.rejects(runtime.testWine({timeoutMs:5}),/timed out/); assert.equal(runtime.state,'failed');
+});
+test('x86 launch is gated on installed WoW64 DLLs', async () => {
+  const {runtime,calls} = runtimeFixture({wow64:false}); await runtime.boot();
+  await assert.rejects(runtime.launch(collectFiles([exe('game.exe',332)]),'game.exe'),/WoW64/);
+  assert.equal(calls.filter(c=>c[0]==='spawn').length,0);
+});

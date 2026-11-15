@@ -1,110 +1,68 @@
 # Windex
 
-**A reusable browser workspace for Windows games, plus a real Linux console.**
+**An in-browser runtime for x86 and x64 Windows games using GEX, a Wasm Linux environment, and Wasm Wine.**
 
-Windex assembles **GEX + its Wasm Wine runtime** for direct EXE execution and the
-**linuxontab/v86 stack** for an optional Linux VM. Import an EXE and companion
-files into the browser; no per-game AOT project is required by the new launcher.
-This is **runtime translation/emulation**, not universal static recompilation.
+Windex imports a local game folder and runs its EXE through one reusable runtime.
+It is not a CLI product, a per-game converter, or a static-recompilation pipeline.
+The old Glassforge implementation has been removed.
 
-> **Current status:** browser shell, GEX public-API adapter, local file imports,
-> runtime asset staging and optional Linux console are implemented. A real
-> v86/Linux guest boot and 9P file transfer passed in Node. **Windows execution
-> remains unverified**: the compiled GEX runtime/Wine filesystem tree is not
-> supplied or built in this sandbox. An unstaged backend is visibly disabled.
-> No claim is made that arbitrary games—or Ichorous—already work.
+## Current status
 
-## Architecture, without a hidden kernel swap
+- Real published **GEX 1.0.0 + Wasm Debian 1.0.0** assets are assembled into the browser deployment.
+- **Real Chromium integration check passed:** cross-origin isolation, GEX modules, kernel boot and filesystem mount; the application correctly enters **Needs Wine**.
+- Browser controls install trusted local Wine tar layers, check the Wasm loader/prefix/DLLs/drive mappings, and test `cmd.exe /c ver` with a timeout.
+- Local folder/EXE import preserves companion assets and launches via the GEX process API. x86 requires WoW64; the x64 profile requires Wasm memory64.
+- **Missing:** a compatible built Wasm Wine distribution and initialized prefix. They are not included in the npm Debian base. Windows execution and Ichorous gameplay remain unverified.
 
-```
-Game folder → Wasm Wine64/WoW64 → GEX x86/x64 translation + Linux ABI → Wasm/WebGPU
-Linux ISO   → v86 virtual x86 PC → real 32-bit Linux kernel → console + 9P
-```
+## Use the browser app
 
-These are separate backends inside one application, not two interchangeable
-kernels. v86 currently lacks x64 guests. GEX already provides its own Linux
-kernel/syscall layer. [joelseverin/linux-wasm](docs/linux-wasm-research.md), a real
-Linux kernel compiled to Wasm, is being studied but is **not integrated**.
-
-## Try the shell
-
-Python 3.10+; the Windex static server/stager need only the standard library:
+Deployment developers need Node 22+ and Python 3.10+:
 
 ```sh
-python3 -m windex serve
+npm ci
+npm run build
+npm run dev
 ```
 
-Open http://localhost:8080 locally or use your environment's preview. Without
-assets, the interface explains what is missing rather than faking execution.
+Open the live preview or http://localhost:8080. These are development/hosting
+commands; all game import and runtime interaction happens in the browser.
+There is no upload or server-side game-execution endpoint.
 
-For a working Linux console backend, stage a pinned linuxontab checkout:
+1. Start the environment. Without Wine, it reports exactly which file is missing.
+2. Choose **Install Wine** and select trusted GEX-compatible `.tar`/`.tar.zst` layers containing the Wine distribution and prefix.
+3. Use **Test Wine** to verify actual process execution, not merely file presence.
+4. Import the entire game folder, choose its EXE, and run it.
 
-```sh
-python3 -m windex stage --linuxontab /path/to/linuxontab -o work/windex-linux
-python3 -m windex serve --site work/windex-linux
-```
+A stock Linux Wine package or a Windows Wine installer will **not** work. Windex
+requires the GEX Wasm Wine build. Runtime bundles execute code inside the guest;
+only install bundles you trust. Memory-only sessions lose installed layers on reload.
 
-See [Windex architecture and deployment](docs/windex-architecture.md) for the
-exact source revision, LFS handling, memory requirements and licensing caveats.
-
-## Add the Windows runtime once
-
-On a machine capable of building GEX/Wine, build GEX's general runtime package
-and prepare its compatible Linux + Wasm Wine64/WoW64 filesystem/prefix trees:
-
-```sh
-python3 -m windex stage -o work/windex \
-  --linuxontab /path/to/linuxontab --runtime /path/to/built-gex-runtime \
-  --tree /path/to/linux-base.tar --tree /path/to/wine-prefix.tar
-python3 -m windex serve --site work/windex
-```
-
-This is asset staging, not an automatic compiler/toolchain installer. Preparing
-the guest trees remains an open integration task. A stock Linux ISO or Wine
-installation cannot simply replace the GEX-compatible trees.
-
-Then the browser launcher:
-- Imports a folder locally, preserves asset paths and lets you select an EXE.
-- Boots one GEX session; starts the configured Wasm Wine loader with that EXE.
-- Uses on-demand translation/cache, graphics, audio and gamepad adapters.
-- Supports an opt-in persistent OPFS filesystem; otherwise session memory only.
-- Never posts game files to the hosting server. Network relays/clipboard access
-  are not configured. Optional Linux transfers are explicit and separate.
-
-Full browser isolation/WebGPU/memory64 support and Wine compatibility still
-apply. This does not bypass DRM, anti-cheat, missing Windows APIs or game-specific
-requirements, and browser sandboxing is not a malware-security guarantee.
-
-## Developer tools retained
-
-The older Glassforge `python -m forge ...` CLI and UI remain available for PE
-inspection, bounded iced-x86 code discovery, upstream setup/probing, preflight,
-and optional per-game AOT exports. They are not the Windex runtime launch path.
-Install their dependencies with `pip install -r requirements.txt` in a venv.
-
-- [Windex architecture, staging, validation and limitations](docs/windex-architecture.md)
-- [Native-Wasm Linux research](docs/linux-wasm-research.md)
-- [Upstream source pins and roles](upstreams.lock.json)
-- [Legacy GEX builder/probe helpers](docs/builder.md)
-- [Legacy static-port workflow](docs/workflow.md)
-- [Earlier x64 source findings](docs/x64-integration.md)
-- [Ichorous metadata analysis](docs/sample-analysis.json)
+Optional deployment configuration: copy `windex.build.example.json` to
+`windex.build.local.json` and supply your local runtime/tree paths before building.
+Serve the generated `work/site` with COOP `same-origin`, COEP `require-corp`, Wasm
+MIME types, and byte-range support. HTTPS is required outside localhost.
 
 ## Tests
 
 ```sh
-python3 -m venv .venv
-. .venv/bin/activate
-pip install -r requirements.txt
-python -m unittest discover -s tests -v
-node --test tests/js/*.test.mjs  # Node 22+
-
-# Optional REAL v86/Linux boot + 9P test, after staging linux4.iso:
-node scripts/smoke-linux.cjs work/windex-linux/assets/linux
+npm test                 # adapter and browser file-handling unit tests
+npm run test:hosting     # static-hosting and deployment assembly tests
+npm run test:browser     # real headless Chromium; run dev server first
 ```
 
-GEX adapter tests use mocked upstream classes; the optional Linux smoke test
-uses real artifacts. Neither proves Wine/Windows gameplay compatibility.
-No upstream binary blobs or games are committed. Review all runtime/BIOS/Linux,
-AGPL/GPL, corresponding-source and game redistribution obligations before
-publishing staged assets; copying code from multiple repos does not waive them.
+The browser smoke test checks kernel boot, not Wine or game compatibility. Its
+software WebGPU is a test facility, not a gameplay performance measurement.
+
+## Architecture and licensing
+
+`Game folder → Wine Windows APIs → GEX x86/x64 translation + Linux ABI → Wasm/WebGPU`
+
+The optional linuxontab/v86 console is a separate 32-bit Linux VM, not the Windows
+backend. linux-wasm was [studied only](docs/linux-wasm-research.md); its kernel is
+not substituted into GEX.
+
+See [architecture](docs/windex-architecture.md), [upstream research](docs/upstream-research.md),
+and `upstreams.lock.json`. GEX's AGPL obligations, Wine's LGPL obligations, and
+Debian's per-package licenses apply to redistributed components. Preserve upstream
+notices and supply corresponding source as required. Installed npm runtime packages
+carry their own LICENSE/NOTICE/THIRD-PARTY material, copied into deployment assets.
