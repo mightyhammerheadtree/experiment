@@ -1,1 +1,1 @@
-"""Windex: a browser runtime shell, with legacy forge tools kept separately."""
+"""Developer asset assembly and static hosting for the Windex browser application."""

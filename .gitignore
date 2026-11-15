@@ -5,3 +5,6 @@ work/
 *.zip
 
 .venv/
+
+windex.build.local.json
+node_modules/

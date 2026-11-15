@@ -1,0 +1,6 @@
+{
+  "runtime": "/build/windex-runtime",
+  "trees": ["/build/linux-base.tar", "/build/wine-prefix.tar"],
+  "linuxontab": "/build/linuxontab",
+  "iso": "linux4.iso"
+}

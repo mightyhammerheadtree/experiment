@@ -1,0 +1,24 @@
+{
+  "name": "windex-browser-runtime",
+  "private": true,
+  "version": "0.1.0",
+  "description": "In-browser Windows game runtime using GEX and WebAssembly Wine",
+  "scripts": {
+    "dev": "python3 scripts/dev-server.py",
+    "build": "python3 scripts/build-site.py",
+    "test": "node --test tests/js/*.test.mjs",
+    "test:hosting": "python3 -m unittest discover -s tests -v",
+    "test:browser": "node scripts/smoke-browser.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@gexemu/debian": "1.0.0",
+    "@gexemu/runtime": "1.0.0"
+  },
+  "devDependencies": {
+    "@sparticuz/chromium": "153.0.0",
+    "playwright-core": "1.65.1"
+  }
+}
