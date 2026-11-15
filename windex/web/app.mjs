@@ -57,7 +57,7 @@ try {
   runtime.addEventListener('log', e => append('runtimeLog', e.detail)); runtime.addEventListener('exit', e => append('runtimeLog', '\nProgram exited: '+JSON.stringify(e.detail)+'\n'));
   linux.addEventListener('output', e => append('serial', e.detail, 200000)); linux.addEventListener('state', e => { $('linuxState').textContent = e.detail.toUpperCase(); $('linuxBoot').disabled = e.detail !== 'idle'; $('linuxStop').disabled = e.detail !== 'running'; });
   $('gexAvailability').textContent = config.gex.enabled ? 'GEX environment configured. Boot it to check Wine availability.' : 'This deployment has not supplied its GEX runtime. No game is simulated.';
-  $('linuxAvailability').textContent = config.linux.enabled ? 'Local v86/BIOS/ISO assets staged. Network relay is disabled.' : 'Not staged: use --linuxontab with the Windex stage command.';
+  $('linuxAvailability').textContent = config.linux.enabled ? 'Local v86/BIOS/ISO assets staged. Network relay is disabled.' : 'Not configured: this optional console can be included in the deployment build.';
   $('linuxBoot').disabled = !config.linux.enabled;
   $('capabilities').textContent = JSON.stringify({secureContext: isSecureContext, crossOriginIsolated, WebGPU: !!navigator.gpu, OPFS: !!navigator.storage?.getDirectory, gexAssetsConfigured: config.gex.enabled, linuxAssetsConfigured: config.linux.enabled}, null, 2);
   refresh();

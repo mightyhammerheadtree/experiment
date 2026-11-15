@@ -17,7 +17,9 @@ export class WindowsRuntime extends EventTarget {
     if (this.config.d3d && !this.platform.gpu) throw Error('This graphics profile requires WebGPU. Use a supported browser/device.');
     if (persistent && !this.platform.opfs) throw Error('Persistent storage is unavailable; choose an in-memory session');
     if (!Array.isArray(this.config.trees) || !this.config.trees.length) throw Error('A GEX-compatible filesystem with Wasm Wine and a prefix is required');
+    if (this.config.memory64 && !memory64Supported()) throw Error('This Wine build requires browser WebAssembly memory64 support');
     const base = localURL(this.config.package);
+    this.persistent = persistent;
     this.used = true; this.setState('booting');
     this.report('runtime-modules', 'checking', 'Loading GEX browser modules');
     try {
@@ -76,8 +78,8 @@ export class WindowsRuntime extends EventTarget {
     this.diagnostics = this.diagnostics.filter(c => c.id !== id).concat(row);
     this.emit('diagnostic', row);
   }
-  environment(arch = 'x64') {
-    return {...this.config.env, ...this.windows.env, WINEPREFIX:this.config.prefix, WINEGEX_WOW64:this.wine?.wow64 ? '1' : '0', ...(arch === 'x64' ? {GEX_MEM64:'1'} : {GEX_MEM64:'0'})};
+  environment() {
+    return {...this.config.env, ...this.windows.env, WINEPREFIX:this.config.prefix, WINEGEX_WOW64:this.wine?.wow64 ? '1' : '0', GEX_MEM64:this.config.memory64 ? '1' : '0', WINEGEX_DOOR:'1', ...(!this.persistent ? {WINEGEX_NO_REGSAVE:'1'} : {})};
   }
   async testWine({timeoutMs = 15000} = {}) {
     if (this.state !== 'ready') throw Error('Start the runtime and wait for it to be ready');
@@ -114,7 +116,7 @@ export class WindowsRuntime extends EventTarget {
     try {
       const arch = await peArchitecture(chosen.file);
       if (arch === 'x86' && !this.wine.wow64) throw Error('This Wine installation has no WoW64 support for x86 games');
-      if (arch === 'x64' && !memory64Supported()) throw Error('This x64 runtime profile requires browser WebAssembly memory64 support');
+      if (this.config.memory64 && !memory64Supported()) throw Error('This x64 runtime profile requires browser WebAssembly memory64 support');
       const exeBytes = new Uint8Array(await chosen.file.arrayBuffer());
       const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', exeBytes));
       const root = '/games/' + [...hash].map(byte => byte.toString(16).padStart(2, '0')).join('');
@@ -130,7 +132,7 @@ export class WindowsRuntime extends EventTarget {
       }
       const file = root + '/' + executable;
       const cwd = file.slice(0, file.lastIndexOf('/'));
-      const env = this.environment(arch);
+      const env = this.environment();
       const argv = [this.config.loader, 'Z:' + file.replaceAll('/', '\\')];
       this.emit('log', `Launching ${arch}: ${executable} (runtime translation, not static recompilation)`);
       this.setState('starting');

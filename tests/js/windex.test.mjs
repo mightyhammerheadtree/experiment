@@ -60,7 +60,7 @@ test('EXE and companion files go straight to guest FS then Wine spawn', async ()
   const [,argv,opts] = calls.find(c=>c[0]==='spawn');
   assert.equal(argv[0],'/wine/lib/wine/x86_64-unix/wine'); assert.equal(argv.length,2);
   assert.match(argv[1],/^Z:\\games\\[0-9a-f]{64}\\hello ; literal.exe$/);
-  assert.equal(opts.env.WINEPREFIX,'/pfx'); assert.equal(opts.env.WINEGEX_WOW64,'1'); assert.equal(opts.env.GEX_MEM64,'1');
+  assert.equal(opts.env.WINEPREFIX,'/pfx'); assert.equal(opts.env.WINEGEX_WOW64,'1'); assert.equal(opts.env.GEX_MEM64,'0'); assert.equal(opts.env.WINEGEX_DOOR,'1'); assert.equal(opts.env.WINEGEX_NO_REGSAVE,'1');
   finish({code:0}); await new Promise(r=>setTimeout(r,0)); assert.equal(runtime.state,'ready');
   assert.ok(logs.includes('program output'));
 });

@@ -27,7 +27,8 @@ is not transactional: after a partial failure, reload for a clean memory session
 
 Required default paths:
 
-- `/wine/lib/wine/x86_64-unix/wine`: GEX-compatible Wasm loader, not ELF
+- `/wine/lib/wine/x86_64-unix/wine`: GEX-compatible bare Wasm or GEXWASM ELF64 envelope, not stock Linux Wine
+- `/wine/lib/wine/x86_64-unix/wineserver`: matching Wasm wineserver
 - `/wine/lib/wine/x86_64-windows/{ntdll,kernel32}.dll`
 - `/pfx/{system,user}.reg`: initialized win64 prefix
 - `/pfx/dosdevices/z:` → `/`; C: must resolve to a directory
@@ -46,8 +47,8 @@ test does not prove graphics, audio, anti-cheat, or game compatibility.
 
 ## Browser and hosting
 
-Use a secure, cross-origin-isolated origin with WebGPU, Wasm threads and (for x64)
-memory64. OPFS is optional; memory-backed sessions are the default. Persistent
+Use a secure, cross-origin-isolated origin with WebGPU and Wasm threads.
+Memory64 is required only by a configured memory64 build, not by every x64 EXE. OPFS is optional; memory-backed sessions are the default. Persistent
 storage is origin-scoped and not a substitute for backing up original game files.
 The development server binds 0.0.0.0 and sends COOP/COEP/CORP, MIME and range headers;
 it accepts no uploads or execution requests. Browser WebAssembly isolation is not
@@ -66,3 +67,6 @@ assembly and HTTP behavior. `npm run test:browser` boots the actual npm runtime
 in Chromium and expects Ready or Needs Wine, never a fabricated ready flag.
 No compatible Wine bundle has yet been supplied or executed, and the intended
 Ichorous `raw` x64 GameMaker/D3D11 test remains pending that prerequisite.
+
+See [Wasm Wine build integration](wasm-wine-build.md) for the pinned build,
+sanitized prefix packaging, layer manifest and pre-game validation gates.

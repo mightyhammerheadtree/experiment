@@ -1,6 +1,9 @@
 {
   "runtime": "/build/windex-runtime",
-  "trees": ["/build/linux-base.tar", "/build/wine-prefix.tar"],
+  "trees": [
+    "node_modules/@gexemu/debian/debian-slim.tar.zst"
+  ],
   "linuxontab": "/build/linuxontab",
-  "iso": "linux4.iso"
+  "iso": "linux4.iso",
+  "wineBundle": "work/wine-bundle"
 }

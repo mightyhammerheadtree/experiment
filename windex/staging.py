@@ -47,7 +47,7 @@ def stage(output, linuxontab=None, runtime=None, trees=(), iso='linux4.iso'):
         if out.is_relative_to(input_dir): raise ValueError('Site output must be outside input source directories')
     out.mkdir(parents=True)
     shutil.copytree(ROOT/'windex/web', out, dirs_exist_ok=True)
-    config = dict(schema=1, product='Windex', mode='runtime-translation', gex=dict(enabled=bool(package), package='/assets/gex/', trees=[], loader='/wine/lib/wine/x86_64-unix/wine', prefix='/pfx', env={'HOME':'/home/user','PATH':'/usr/local/bin:/usr/bin:/bin','WINEDEBUG':'err+all,fixme-all','WINEGEX_WOW64':'1','WINEDLLOVERRIDES':'mshtml=;mscoree='}, persistence=False, store='windex-v1', d3d=True), linux=dict(enabled=bool(source), assets='/assets/linux/', iso=iso, memoryMiB=128))
+    config = dict(schema=1, product='Windex', mode='runtime-translation', gex=dict(enabled=bool(package), package='/assets/gex/', trees=[], loader='/wine/lib/wine/x86_64-unix/wine', prefix='/pfx', env={'HOME':'/home/user','PATH':'/usr/local/bin:/usr/bin:/bin','WINEDEBUG':'err+all,fixme-all','WINEGEX_WOW64':'1','WINEDLLOVERRIDES':'mshtml=;mscoree='}, memory64=False, persistence=False, store='windex-v1', d3d=True), linux=dict(enabled=bool(source), assets='/assets/linux/', iso=iso, memoryMiB=128))
     if source:
         target=out/'assets/linux'; target.mkdir(parents=True)
         for name in V86_FILES+[iso]: shutil.copyfile(source/'shell'/name,target/name)

@@ -7,9 +7,15 @@ import tempfile
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from windex.staging import stage
+from windex.wine_bundle import verify_bundle
 
 config_path = Path(os.environ.get('WINDEX_BUILD_CONFIG', 'windex.build.local.json'))
 config = json.loads(config_path.read_text()) if config_path.is_file() else {}
+trees = list(config.get('trees', ['node_modules/@gexemu/debian/debian-slim.tar.zst']))
+bundle_manifest = None
+if config.get('wineBundle'):
+    archive, bundle_manifest = verify_bundle(config['wineBundle'])
+    trees.append(str(archive))
 output = Path(os.environ.get('WINDEX_OUTPUT', 'work/site')).resolve()
 work = (Path(__file__).resolve().parent.parent/'work').resolve()
 if output == work or not output.is_relative_to(work):
@@ -17,7 +23,9 @@ if output == work or not output.is_relative_to(work):
 output.parent.mkdir(parents=True, exist_ok=True)
 with tempfile.TemporaryDirectory(prefix='.windex-build-', dir=output.parent) as temporary:
     staged = Path(temporary)/'site'
-    result = stage(staged, linuxontab=config.get('linuxontab'), runtime=config.get('runtime', 'node_modules/@gexemu/runtime'), trees=config.get('trees', ['node_modules/@gexemu/debian/debian-slim.tar.zst']), iso=config.get('iso', 'linux4.iso'))
+    result = stage(staged, linuxontab=config.get('linuxontab'), runtime=config.get('runtime', 'node_modules/@gexemu/runtime'), trees=trees, iso=config.get('iso', 'linux4.iso'))
+    if bundle_manifest:
+        shutil.copyfile(Path(config['wineBundle'])/'wine-bundle.json', staged/'wine-bundle.json')
     if output.exists(): shutil.rmtree(output)
     staged.rename(output)
 result['site'] = str(output)

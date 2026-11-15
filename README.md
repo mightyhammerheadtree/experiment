@@ -11,7 +11,8 @@ The old Glassforge implementation has been removed.
 - Real published **GEX 1.0.0 + Wasm Debian 1.0.0** assets are assembled into the browser deployment.
 - **Real Chromium integration check passed:** cross-origin isolation, GEX modules, kernel boot and filesystem mount; the application correctly enters **Needs Wine**.
 - Browser controls install trusted local Wine tar layers, check the Wasm loader/prefix/DLLs/drive mappings, and test `cmd.exe /c ver` with a timeout.
-- Local folder/EXE import preserves companion assets and launches via the GEX process API. x86 requires WoW64; the x64 profile requires Wasm memory64.
+- Local folder/EXE import preserves companion assets and launches via the GEX process API. x86 requires WoW64; memory64 is checked only for explicitly configured memory64 Wine builds.
+- Pinned upstream Wine build/packaging helpers now prepare a sanitized matching prefix and an integrity-checked deployment layer; see [Wasm Wine integration](docs/wasm-wine-build.md).
 - **Missing:** a compatible built Wasm Wine distribution and initialized prefix. They are not included in the npm Debian base. Windows execution and Ichorous gameplay remain unverified.
 
 ## Use the browser app
