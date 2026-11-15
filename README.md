@@ -6,6 +6,8 @@ Windex imports a local game folder and runs its EXE through one reusable runtime
 It is not a CLI product, a per-game converter, or a static-recompilation pipeline.
 The old Glassforge implementation has been removed.
 
+**Next steps:** [Roadmap and local-agent Wine build handoff](ROADMAP.md) — exact Wine build scope, artifact packaging, size estimates, Boxedwine findings, and the major browser JIT workstream.
+
 ## Current status
 
 - Real published **GEX 1.0.0 + Wasm Debian 1.0.0** assets are assembled into the browser deployment.
